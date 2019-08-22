@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 	This script performs the installation or uninstallation of an application(s).
 .DESCRIPTION
@@ -61,12 +61,12 @@ Try {
     ## Variables: Application
     [string]$appVendor = 'Dell'
     [string]$appName = 'Deploy Driver Updates'
-    [string]$appVersion = '1.0.0'
+    [string]$appVersion = 'v2'
     [string]$appArch = 'x86/x64'
     [string]$appLang = 'EN'
     [string]$appRevision = '01'
     [string]$appScriptVersion = '1.0.0'
-    [string]$appScriptDate = '19/08/2019'
+    [string]$appScriptDate = '21/08/2019'
     [string]$appScriptAuthor = 'Mike Mackin'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
@@ -135,68 +135,43 @@ Try {
 		
         ## <Perform Installation tasks here>
         $osv = (get-wmiobject win32_operatingsystem).caption
-        Show-InstallationPrompt -Message 'Your Workstation is about to be updated, Please ensure your work is saved before clicking OK, as the network updates may disconnect you from the network momentarily.' -ButtonRightText "OK" -Icon "Information" 
+        $BIOSVersion = Get-ItemProperty -Path HKLM:\HARDWARE\DESCRIPTION\System\BIOS -Name BiosMinorRelease
+        $PCModel = (Get-WmiObject -Class:Win32_ComputerSystem).Model
         show-installationprogress -statusmessage "Scanning system for updates..."
         start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/report c:\windows\temp\dell_report.xml /reportall /silent" -Wait -WindowStyle Hidden
 
 
         if (Test-Path c:\windows\temp\dell_report.xml) {
-            $data = [XML](Get-Content c:\windows\temp\dell_report.xml)
-                
-            switch ($UpdateType) {
-                "All" {
-                    foreach ($update in $data.updates.update) {
-                        $release = $update.release
-                        $updatename = $update.name
-                        show-installationprogress -statusmessage "Installing $updatename"
-                        if ($update.category -like "*bios*") {
-                            if ($osv -like "*windows 10*") { Suspend-BitLocker -MountPoint "C:" -RebootCount 1 }
-                            else { Manage-bde.exe -protectors -disable c: }
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
-                            start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
-                        }
-                        else {
-                            start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                        }
-                    }
+            $data = [XML](Get-Content c:\windows\temp\dell_report.xml)                
+                            
+            foreach ($update in $data.updates.update) {
+                $release = $update.release
+                $updatename = $update.name
+                show-installationprogress -statusmessage "Installing $updatename"
+							
+                if ($update.category -like "*bios*") {
+                    if ($osv -like "*windows 10*") { Suspend-BitLocker -MountPoint "C:" -RebootCount 1 }
+                    else { Manage-bde.exe -protectors -disable c: }
+                    Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                    start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
+                    Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                }						
+                if ($update.category -like "*Network*" -or $update.name -like "*Ethernet*") {
+                    Show-InstallationPrompt -Message 'We are about to install Network Drivers, Please ensure your work is saved, and you are not in a Skype Call before clicking OK, as the network updates may disconnect you from the network momentarily.' -ButtonRightText "OK" -Icon "Information" 
+                    show-installationprogress -statusmessage "Installing $updatename"
+                    start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
+                }											
+                if ($update.category -like "*Video*") {
+                    Show-InstallationPrompt -Message 'We are about to install Display Drivers, The screen may go black momentarily, This is expected behavior and will restore.' -ButtonRightText "OK" -Icon "Information" 
+                    show-installationprogress -statusmessage "Installing $updatename"
+                    start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
                 }
-                "Bios" {
-                    foreach ($update in $data.updates.update) {
-                        $release = $update.release
-                        $updatename = $update.name
-                        if ($update.category -like "*bios*") {
-                            show-installationprogress -statusmessage "Installing $updatename"
-                            if ($osv -like "*windows 10*") { Suspend-BitLocker -MountPoint "C:" -RebootCount 1 }
-                            else { Manage-bde.exe -protectors -disable c: }
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=UPDATEME" -Wait -WindowStyle Hidden
-                            start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=UPDATEME" -Wait -WindowStyle Hidden
-                        }
-                    }
-                }
-                "Network" {
-                    foreach ($update in $data.updates.update) {
-                        $release = $update.release
-                        $updatename = $update.name                                        
-                        if ($update.category -like "*network*") {
-                            show-installationprogress -statusmessage "Installing $updatename"
-                            start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                        }
-                    }
-                }
-                "Display" {
-                    foreach ($update in $data.updates.update) {
-                        $release = $update.release
-                        $updatename = $update.name  
-                        if ($update.category -like "*Video*") {
-                            show-installationprogress -statusmessage "Installing $updatename"
-                            start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                        }
-                    }
+                else {
+                    start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
                 }
             }
-        }
+							
+        }	
         else {
             show-installationprogress -statusmessage "No updates available.."
             start-sleep -Seconds 5
