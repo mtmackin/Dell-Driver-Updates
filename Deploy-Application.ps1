@@ -61,7 +61,7 @@ Try {
     ## Variables: Application
     [string]$appVendor = 'Dell'
     [string]$appName = 'Deploy Driver Updates'
-    [string]$appVersion = 'v2'
+    [string]$appVersion = 'v3'
     [string]$appArch = 'x86/x64'
     [string]$appLang = 'EN'
     [string]$appRevision = '01'
@@ -152,9 +152,15 @@ Try {
                 if ($update.category -like "*bios*") {
                     if ($osv -like "*windows 10*") { Suspend-BitLocker -MountPoint "C:" -RebootCount 1 }
                     else { Manage-bde.exe -protectors -disable c: }
-                    Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
-                    start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                    Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                    if ($BIOSVersion.BiosMinorRelease -ilt "15" -and $PCModel -like "*5289*") {
+                        $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest http://downloads.dell.com/FOLDER05254446M/1/Latitude_5289_1.15.1.exe -OutFile "$dirfiles\Latitude_5289_1.15.1.exe"
+                        Execute-Process -Path 'Latitude_5289_1.15.1.exe' -Parameters '/s /f /p=Ch3vr0l3T /l="c:\windows\ccm\logs\BIOSUpdate.log"'
+                    }
+                    else {
+                        Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                        start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
+                        Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                    }
                 }						
                 if ($update.category -like "*Network*" -or $update.name -like "*Ethernet*") {
                     Show-InstallationPrompt -Message 'We are about to install Network Drivers, Please ensure your work is saved, and you are not in a Skype Call before clicking OK, as the network updates may disconnect you from the network momentarily.' -ButtonRightText "OK" -Icon "Information" 
