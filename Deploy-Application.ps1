@@ -169,9 +169,9 @@ Try {
                             show-installationprogress -statusmessage "Installing $updatename"
                             if ($osv -like "*windows 10*") { Suspend-BitLocker -MountPoint "C:" -RebootCount 1 }
                             else { Manage-bde.exe -protectors -disable c: }
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd= --valsetuppwd=UPDATEME" -Wait -WindowStyle Hidden
                             start-process -FilePath "$dirfiles\dcu-cli.exe" -ArgumentList "/forceupdate $release" -Wait -WindowStyle Hidden
-                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=Ch3vr0l3T" -Wait -WindowStyle Hidden
+                            Start-Process -FilePath "$dirfiles\cctk.exe" -ArgumentList "--setuppwd=UPDATEME" -Wait -WindowStyle Hidden
                         }
                     }
                 }
